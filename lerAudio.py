@@ -17,8 +17,15 @@ assert numpy  # avoid "imported but unused" message (W0611)
 
 import math
 
+from array import array
 
 from scipy import signal
+
+
+from scipy.signal import lfilter, lfilter_zi, butter
+
+from numpy import array, ones
+
 
 def int_or_str(text):
     """Helper function for argument parsing."""
@@ -66,9 +73,9 @@ mapping = [c - 1 for c in args.channels]  # Channel numbers start with 1
 q = queue.Queue()
 
 
-fo = 8000 # frequencia central em Hz
+fo = 1000 # frequencia central em Hz
 bf = 500  # banda para projeto do rejeita banda em Hz
-gdB = 10 # ganho em dB na frequencia fo
+gdB = -50 # ganho em dB na frequencia fo
 
 fa = 48000 # frequencia de amostragem em Hz
 
@@ -147,36 +154,64 @@ for n in range(1,N):
 for n in range(1,N):
     hn[n] = hn[n]*wn[n]
 
-#print(hn)
-zi = list(range(N))
+zi1 = list(range(N-1))
+for n in range(1,(N-1)):
+    zi1[n] = 0
 
+b = np.array(hn)
+zi = np.array(zi1)
 
-print(len(hn))
-print(len(zi))
-for n in range(1,N):
-    zi[n] = 0
-#print(zi)
-
-
+print(b)
 
 
 def audio_callback(indata, frames, time, status):
     """This is called (from a separate thread) for each audio block."""
     if status:
         print(status, file=sys.stderr)
+
     # Fancy indexing with mapping creates a (necessary!) copy:
-    #for n in range(1,N):
-        #zi = signal.lfilter_zi(1, 10)
-    #zi, indata = signal.lfilter(hn, 1, indata, zi)
-    #indata = list(range(N))
-    #zi = signal.lfilter_zi(hn, 1)
-    #zi[n], indata = signal.lfilter(hn[n], 1, indata, zi[n])
-    #z2, _ = signal.lfilter(b, 1, z, zi=zi*z[0])
-    #indata = signal.filtfilt(hn, 1, indata)
+    #for n in range(1,5000):
+    #    indata = indata*-1
     #print(len(indata))
     #print(indata)
-        #indata = indata*(-1)
-    q.put(indata[::args.downsample, mapping])
+    #indata = np.array(indata)
+    #zi = signal.lfilter_zi(b, 1)
+
+    #z, _ = signal.lfilter(b, 1, indata, zi=zi*indata[0])
+    #zi = lfilter_zi(b, 1)
+    #print(zi)
+    #print(zi)
+    #print(indata)
+    concat_list = [j for i in indata for j in i]
+
+    i = np.array(concat_list)
+
+    #print(len(concat_list))
+    #print(len(i))
+    #print(len(b))
+    #print(len(zi))
+    #print(i)
+    #print(b)
+    #print(indata[0])
+    #y, zo = lfilter(b, 1, ones(10), zi=zi)
+    y, zf = lfilter(b, 1, i, zi=zi*i[0])
+    #print(y)
+    #print(type(y))
+    #print(len(y))
+    o = []
+    for var in y:
+        aux = []
+        aux.append(var)
+        o.append(aux)
+    #print(o)
+    o1 = np.array(o)
+    #print(o1)
+    #print(type(indata))
+    #for n in range(1,N):
+    #    y[n]=indata[n]*b[n]
+    #print(type(indata))
+
+    q.put(o1[::args.downsample, mapping])
 
 def callback(indata, outdata, frames, time, status):
     if status:
