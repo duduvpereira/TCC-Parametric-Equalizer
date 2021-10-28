@@ -22,9 +22,10 @@ from array import array
 from scipy import signal
 
 
-from scipy.signal import lfilter, lfilter_zi, butter
+from scipy.signal import lfilter, lfilter_zi, butter, freqz
 
 from numpy import array, ones
+
 
 
 def int_or_str(text):
@@ -74,12 +75,12 @@ q = queue.Queue()
 
 
 fo = 1000 # frequencia central em Hz
-bf = 500  # banda para projeto do rejeita banda em Hz
-gdB = -50 # ganho em dB na frequencia fo
+bf = 1000  # banda para projeto do rejeita banda em Hz
+gdB = 10 # ganho em dB na frequencia fo
 
-fa = 48000 # frequencia de amostragem em Hz
+fa = 144000 # frequencia de amostragem em Hz
 
-lbt = 500 # largura de banda de transicao para calculo da ordem do filtro
+lbt = 1000 # largura de banda de transicao para calculo da ordem do filtro
 fsi = fo - bf/2 - lbt # frequencia limite da banda de passagem inferior em Hz
 fpi = fo - bf/2       # frequencia inferior da banda de rejeicao em Hz
 fps = fo + bf/2       # frequencia superior da banda de rejeicao em Hz
@@ -120,81 +121,102 @@ dw = min((wpi-wsi),(wss-wps))
 # wn = hamming(N+1)
 
 
-deeee = (12*math.pi/dw)  # janela de Blackman
-N = 2*math.ceil(deeee/2) # ordem deve ser par
+N = (12*math.pi/dw)  # janela de Blackman
+N = 2*math.ceil(N/2) # ordem deve ser par
+N=50
 #wn = blackman(N+1)
-wn = list(range(N))
-for i in range(1,N):
-    wn[i] = 0.42-0.5*math.cos((2*math.pi*i)/((N+1)-1))+0.08*math.cos((4*math.pi*i)/((N+1)-1))
-
+#wn = list(range(N))
+#wn = np.array(wn)
+#wn = range(N)
+#for i in wn:
+#    wn[i] = 0.42-0.5*math.cos((2*math.pi*i)/((N+1)-1))+0.08*math.cos((4*math.pi*i)/((N+1)-1))
+wn = np.blackman(N+1)
+#print(wn)
 # Resposta do filtro ideal atrasada de N/2 amostras para ficar causal
 # Atencao para a indeterminacao em n = N/2!
 # Ver formulario de consulta disponível no Moodle
 hlp = list(range(N))
+#hlp = range(N)
 hbp = list(range(N))
 hbr = list(range(N))
 hn = list(range(N))
-for n in range(1,N):
+#hlp = signal.butter(N, wn, btype='low', analog=False)
+for n in range(N):
     hlp[n] = math.sin(wc*(n+1e-8-N/2))/(n+1e-8-N/2)/math.pi # passa-baixas
-for n in range(1,N):
+#for n in range(0,N):
     hbp[n] = 2*math.cos(w0*(n-N/2))*hlp[n] # passa-banda
-for n in range(1,N):
+#for n in range(0,N):
     hbr[n] = hbp[n]*(-1)
 
 #print(hlp)
+print(math.pi)
 print(N)
 #print(gg)
 #print(hbr)
 hbr[math.ceil((N/2)+1)] = 1 + hbr[math.ceil((N/2)+1)] # rejeita-banda
-gdb = 10^(math.ceil(gdB/20))
+gdb = 10**(gdB/20)
 for n in range(1,N):
     hn[n] = hbr[n] + gdb*hbp[n]
 
 # Resposta a amostra unitaria (impulso) do filtro a ser implementado
-for n in range(1,N):
+for n in range(0,N):
     hn[n] = hn[n]*wn[n]
 
-zi1 = list(range(N-1))
-for n in range(1,(N-1)):
-    zi1[n] = 0
+print(gdb)
+#print(hn[105])
+
+
+#zi1 = list(range(3))
+#for n in range(0,3):
+#    zi1[n] = 0
 
 b = np.array(hn)
-zi = np.array(zi1)
+#zi = np.array(zi1)
 
-print(b)
+#print(b)
+#print(b)
 
+# Plot the frequency response.
+#w, mag, phase = signal.bode(b)
 
+#plt.figure()
+#plt.semilogx(w, mag)    # Bode magnitude plot
+#plt.figure()
+#plt.semilogx(w, phase)  # Bode phase plot
+#plt.show()
+
+#print(hn)
+#print(b)
+#b, a = signal.butter(3, 0.05)
+#print(b)
+a = 1
+zi = signal.lfilter_zi(b, a)
+#zi = signal.lfilter_zi(b, 1)
 def audio_callback(indata, frames, time, status):
     """This is called (from a separate thread) for each audio block."""
     if status:
         print(status, file=sys.stderr)
 
-    # Fancy indexing with mapping creates a (necessary!) copy:
-    #for n in range(1,5000):
-    #    indata = indata*-1
-    #print(len(indata))
-    #print(indata)
-    #indata = np.array(indata)
-    #zi = signal.lfilter_zi(b, 1)
 
-    #z, _ = signal.lfilter(b, 1, indata, zi=zi*indata[0])
-    #zi = lfilter_zi(b, 1)
-    #print(zi)
-    #print(zi)
-    #print(indata)
+
+    global zi
     concat_list = [j for i in indata for j in i]
 
     i = np.array(concat_list)
 
-    #print(len(concat_list))
-    #print(len(i))
-    #print(len(b))
-    #print(len(zi))
+    #if flag == 0:
+    #print(zi)
+    #yt, _ = lfilter(b, 1, i, zi=zi*i[0])
+    y, zf = lfilter(b, a, i, zi=zi*i[0])
+        #flag = 1
+    #if flag == 1:
+        #y, zf = lfilter(b, 1, i, zi=zi*i[0])
+    zi = zf
+    #print(y)
+    #print(len(y))
     #print(i)
-    #print(b)
-    #print(indata[0])
-    #y, zo = lfilter(b, 1, ones(10), zi=zi)
-    y, zf = lfilter(b, 1, i, zi=zi*i[0])
+    #print(len(i))
+    #y1, zf = lfilter(b, 1, y, zi=zi*y[0])
     #print(y)
     #print(type(y))
     #print(len(y))
@@ -257,10 +279,10 @@ try:
     ax.tick_params(bottom=False, top=False, labelbottom=False,
                    right=False, left=False, labelleft=False)
     fig.tight_layout(pad=0)
-
+    flag = 0
     stream = sd.InputStream(
         device=args.device, channels=max(args.channels),
-        samplerate=48000, callback=audio_callback)
+        samplerate=144000, callback=audio_callback)
 
     #stream = sd.Stream(channels=2, callback=callback)
 
