@@ -22,7 +22,7 @@ from array import array
 from scipy import signal
 
 
-from scipy.signal import lfilter, lfilter_zi, butter, freqz
+from scipy.signal import lfilter, lfilter_zi, butter, freqz, lfiltic
 
 from numpy import array, ones
 
@@ -74,13 +74,13 @@ mapping = [c - 1 for c in args.channels]  # Channel numbers start with 1
 q = queue.Queue()
 
 
-fo = 1000 # frequencia central em Hz
-bf = 1000  # banda para projeto do rejeita banda em Hz
-gdB = 10 # ganho em dB na frequencia fo
+fo = 500 # frequencia central em Hz
+bf = 500  # banda para projeto do rejeita banda em Hz
+gdB = -10 # ganho em dB na frequencia fo
 
-fa = 144000 # frequencia de amostragem em Hz
+fa = 96000 # frequencia de amostragem em Hz
 
-lbt = 1000 # largura de banda de transicao para calculo da ordem do filtro
+lbt = 500 # largura de banda de transicao para calculo da ordem do filtro
 fsi = fo - bf/2 - lbt # frequencia limite da banda de passagem inferior em Hz
 fpi = fo - bf/2       # frequencia inferior da banda de rejeicao em Hz
 fps = fo + bf/2       # frequencia superior da banda de rejeicao em Hz
@@ -123,7 +123,7 @@ dw = min((wpi-wsi),(wss-wps))
 
 N = (12*math.pi/dw)  # janela de Blackman
 N = 2*math.ceil(N/2) # ordem deve ser par
-N=50
+#N=300
 #wn = blackman(N+1)
 #wn = list(range(N))
 #wn = np.array(wn)
@@ -162,20 +162,25 @@ for n in range(1,N):
 for n in range(0,N):
     hn[n] = hn[n]*wn[n]
 
-print(gdb)
+#print(gdb)
 #print(hn[105])
 
 
-#zi1 = list(range(3))
-#for n in range(0,3):
-#    zi1[n] = 0
+zi1 = list(range(N-1))
+for n in range(1, (N-1)):
+    zi1[n] = 0
+
+#t = list(range(N))
+#t[0] = 1
+#zi1[1] = 0
+
 
 b = np.array(hn)
-#zi = np.array(zi1)
+zi = np.array(zi1)
 
 #print(b)
 #print(b)
-
+#print(zi)
 # Plot the frequency response.
 #w, mag, phase = signal.bode(b)
 
@@ -186,28 +191,33 @@ b = np.array(hn)
 #plt.show()
 
 #print(hn)
-#print(b)
+#print(b[0])
+#print(b[1])
+#print(len(b))
 #b, a = signal.butter(3, 0.05)
 #print(b)
 a = 1
-zi = signal.lfilter_zi(b, a)
+#b = 1
+#zi = signal.lfiltic(b, a)
 #zi = signal.lfilter_zi(b, 1)
+
 def audio_callback(indata, frames, time, status):
     """This is called (from a separate thread) for each audio block."""
     if status:
         print(status, file=sys.stderr)
 
 
-
+    #print(len(indata))
     global zi
     concat_list = [j for i in indata for j in i]
 
     i = np.array(concat_list)
-
+    #temp=zi*i[0]
+    #print(temp)
     #if flag == 0:
     #print(zi)
     #yt, _ = lfilter(b, 1, i, zi=zi*i[0])
-    y, zf = lfilter(b, a, i, zi=zi*i[0])
+    y, zf = lfilter(b, a, i, zi=zi*1)
         #flag = 1
     #if flag == 1:
         #y, zf = lfilter(b, 1, i, zi=zi*i[0])
@@ -282,7 +292,7 @@ try:
     flag = 0
     stream = sd.InputStream(
         device=args.device, channels=max(args.channels),
-        samplerate=144000, callback=audio_callback)
+        samplerate=96000, callback=audio_callback)
 
     #stream = sd.Stream(channels=2, callback=callback)
 
