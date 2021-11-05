@@ -61,13 +61,17 @@ parser.add_argument('--samplerate', type=float, help='sampling rate')
 parser.add_argument('--blocksize', type=int, help='block size')
 parser.add_argument('--latency', type=float, help='latency in seconds')
 args = parser.parse_args(remaining)
-fo = 500 # frequencia central em Hz
+
+
+
+
+fo = 1000 # frequencia central em Hz
 bf = 500  # banda para projeto do rejeita banda em Hz
 gdB = 10 # ganho em dB na frequencia fo
 
-fa = 96000 # frequencia de amostragem em Hz
+fa = 48000 # frequencia de amostragem em Hz
 
-lbt = 500 # largura de banda de transicao para calculo da ordem do filtro
+lbt = 500  # largura de banda de transicao para calculo da ordem do filtro
 fsi = fo - bf/2 - lbt # frequencia limite da banda de passagem inferior em Hz
 fpi = fo - bf/2       # frequencia inferior da banda de rejeicao em Hz
 fps = fo + bf/2       # frequencia superior da banda de rejeicao em Hz
@@ -110,6 +114,7 @@ dw = min((wpi-wsi),(wss-wps))
 
 N = (12*math.pi/dw)  # janela de Blackman
 N = 2*math.ceil(N/2) # ordem deve ser par
+#N=300
 #wn = blackman(N+1)
 #wn = list(range(N))
 #wn = np.array(wn)
@@ -135,8 +140,8 @@ for n in range(N):
     hbr[n] = hbp[n]*(-1)
 
 #print(hlp)
-print(math.pi)
-print(N)
+#print(math.pi)
+#print(N)
 #print(gg)
 #print(hbr)
 hbr[math.ceil((N/2)+1)] = 1 + hbr[math.ceil((N/2)+1)] # rejeita-banda
@@ -148,23 +153,51 @@ for n in range(1,N):
 for n in range(0,N):
     hn[n] = hn[n]*wn[n]
 
-print(gdb)
+#print(gdb)
 #print(hn[105])
 
 
-#zi1 = list(range(N-1))
-#for n in range(0,(N-1)):
-    #zi1[n] = 0
+zi1 = list(range(N-1))
+for n in range(1, (N-1)):
+    zi1[n] = 0
+
+#t = list(range(N))
+#t[0] = 1
+#zi1[1] = 0
+
 
 b = np.array(hn)
-#zi = lfilter_zi(b, 1)
+zi = np.array(zi1)
+
+#print(b)
+#print(b)
+#print(zi)
+# Plot the frequency response.
+#w, mag, phase = signal.bode(b)
+
+#plt.figure()
+#plt.semilogx(w, mag)    # Bode magnitude plot
+#plt.figure()
+#plt.semilogx(w, phase)  # Bode phase plot
+#plt.show()
+
+#print(hn)
+#print(b[0])
+#print(b[1])
+#print(len(b))
+#b, a = signal.butter(3, 0.05)
+print(len(b))
+a = 1
+#b = 1
+#zi = signal.lfiltic(b, a)
+#zi = signal.lfilter_zi(b, 1)
 
 
 def callback(indata, outdata, frames, time, status):
     if status:
         print(status)
-    print(len(indata))
-    print(len(outdata))
+    #print(len(indata))
+    #print(len(outdata))
     global zi
     concat_list = [j for i in indata for j in i]
 
@@ -181,8 +214,8 @@ def callback(indata, outdata, frames, time, status):
         o.append(aux)
     #print(o)
     o1 = np.array(o)
-    print(len(o1))
-    print(len(indata))
+    #print(len(o1))
+    #print(len(indata))
 
     #o1 = len(o1)/2
     #print(len(o1))
